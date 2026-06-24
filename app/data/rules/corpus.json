@@ -1,0 +1,61 @@
+{
+  "version": "2026.06.1",
+  "sources": {
+    "ASCI": [
+      {
+        "id": "ASCI-I-1.4",
+        "pattern": "\\b(best|no\\.?\\s?1|number one|world'?s|india'?s)\\b",
+        "severity": "Critical",
+        "citation": "ASCI Code Chapter I, Clause 1.4",
+        "explanation": "Unsubstantiated superlative or comparative claim.",
+        "suggested_fix": "Remove the absolute superlative or add verifiable substantiation (e.g. cite the test/study)."
+      },
+      {
+        "id": "ASCI-I-1.1",
+        "pattern": "(100%|\\bguaranteed\\b|\\brisk[- ]?free\\b)",
+        "severity": "High",
+        "citation": "ASCI Code Chapter I, Clause 1.1",
+        "explanation": "Absolute guarantee likely to mislead.",
+        "suggested_fix": "Qualify the claim or remove the absolute guarantee."
+      }
+    ],
+    "TRAI": [
+      {
+        "id": "TRAI-TCCCPR-URGENCY",
+        "pattern": "\\b(now|hurry|last chance|before stock|act fast|today only)\\b",
+        "severity": "High",
+        "citation": "CCPA Misleading Ads Guidelines 2022 / TCCCPR 2018",
+        "explanation": "False urgency / pressure tactic in commercial communication.",
+        "suggested_fix": "Remove artificial urgency or state a genuine, dated offer period."
+      }
+    ],
+    "BIS": [
+      {
+        "id": "BIS-ENERGY",
+        "pattern": "\\b(\\d-star|energy efficient|isi certified)\\b",
+        "severity": "Medium",
+        "citation": "BIS / BEE energy-rating claim rules",
+        "explanation": "Energy or certification claim requires a valid IS/BEE reference.",
+        "suggested_fix": "Attach the IS certification number or BEE star-rating reference."
+      }
+    ],
+    "DPDP": [
+      {
+        "id": "DPDP-S6-NOTICE",
+        "pattern": "\\b(we (use|share|sell)|your (data|details|number|contact)|third[- ]party|partners)\\b",
+        "severity": "High",
+        "citation": "DPDP Act 2023, Section 5 (Notice)",
+        "explanation": "Reference to using or sharing personal data without a clear consent notice.",
+        "suggested_fix": "Add an explicit notice of purpose and a consent/opt-out mechanism before using personal data."
+      },
+      {
+        "id": "DPDP-S6-PURPOSE",
+        "pattern": "\\b(automatically (subscribed|enrolled)|pre[- ]?(ticked|selected|checked)|by default you)\\b",
+        "severity": "Critical",
+        "citation": "DPDP Act 2023, Section 6 (Consent)",
+        "explanation": "Implied or pre-ticked consent — consent must be free, specific, and affirmative.",
+        "suggested_fix": "Remove pre-ticked/auto-enrolment language; require an explicit opt-in action."
+      }
+    ]
+  }
+}
