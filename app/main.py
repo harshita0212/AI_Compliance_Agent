@@ -40,7 +40,8 @@ async def health() -> dict:
         "status": "ok",
         "app": settings.APP_NAME,
         "rule_corpus_version": corpus.version(),
-        "mock_llm": settings.USE_MOCK_LLM,
+        "gemini_enabled": settings.gemini_enabled,
+        "model": settings.GEMINI_MODEL if settings.gemini_enabled else None,
     }
 
 

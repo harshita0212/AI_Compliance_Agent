@@ -6,6 +6,11 @@ from __future__ import annotations
 import os
 from functools import lru_cache
 
+from dotenv import load_dotenv
+
+# Load variables from a .env file in the project root, if present.
+load_dotenv()
+
 
 class Settings:
     # --- App ---
@@ -15,6 +20,11 @@ class Settings:
     # --- Gemini ---
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
     GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+
+    @property
+    def gemini_enabled(self) -> bool:
+        """Gemini runs whenever a key is configured."""
+        return bool(self.GEMINI_API_KEY.strip())
 
     # --- Rule corpus ---
     RULE_CORPUS_VERSION: str = os.getenv("RULE_CORPUS_VERSION", "2026.06.1")

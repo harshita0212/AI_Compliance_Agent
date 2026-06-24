@@ -269,7 +269,7 @@ This is an active prototype. The following are known and intentional at this sta
 - [x] Wire Approval Inbox review actions to a backend endpoint (logged alongside the original verdict)
 - [ ] Rich audit-log filtering, search, and export
 - [ ] DuckDB-backed analytics on the dashboard
-- [ ] Integrate Gemini for context-aware claim extraction and reasoning
+- [x] Integrate Gemini for context-aware reasoning (runs alongside keyword matching)
 - [ ] Expand and verify the rule corpus against source regulations
 - [ ] Live CRM (Salesforce) consent integration
 - [ ] Cloud deployment

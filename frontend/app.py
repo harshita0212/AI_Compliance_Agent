@@ -36,7 +36,7 @@ try:
     h = api.health()
     st.success(
         f"Backend connected · rule corpus {h['rule_corpus_version']} · "
-        f"{'mock LLM' if h['mock_llm'] else 'live Gemini'}"
+        + (f"Gemini live ({h.get('model')})" if h.get("gemini_enabled") else "keyword-only mode")
     )
 except Exception as e:  # noqa: BLE001
     st.error(

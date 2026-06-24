@@ -51,3 +51,8 @@ def rules_for(source: str) -> list[dict]:
 
 def get_rule(rule_id: str) -> dict | None:
     return _index().get(rule_id)
+
+
+def all_rules() -> list[dict]:
+    """Every rule across all sources, each with its source attached."""
+    return list(_index().values())
