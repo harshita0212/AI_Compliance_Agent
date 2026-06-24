@@ -20,7 +20,7 @@ from fastapi.responses import JSONResponse
 from app.config import get_settings
 from app.core import corpus
 from app.core.orchestrator import run_compliance_check
-from app.models.schemas import CampaignRequest, ComplianceVerdict, Verdict
+from app.models.schemas import CampaignRequest, ComplianceVerdict, ReviewAction, ReviewRequest, Verdict
 from app.services import audit_log
 
 settings = get_settings()
@@ -65,6 +65,29 @@ async def get_audit(audit_reference: str) -> dict:
     if entry is None:
         raise HTTPException(status_code=404, detail="Audit entry not found")
     return entry
+
+
+@app.post("/audit/{audit_reference}/review")
+async def review_audit(audit_reference: str, review: ReviewRequest) -> dict:
+    """
+    Record a human review action against a verdict. Appended as a new review
+    record - the original verdict is never overwritten.
+    """
+    entry = await asyncio.to_thread(audit_log.get_entry, audit_reference)
+    if entry is None:
+        raise HTTPException(status_code=404, detail="Audit entry not found")
+
+    # Guardrail: an override or rejection must be justified (per the spec).
+    if review.action in (ReviewAction.OVERRIDE_APPROVE, ReviewAction.REJECT) and not review.justification.strip():
+        raise HTTPException(status_code=422, detail="A justification is required to override or reject.")
+
+    return await asyncio.to_thread(
+        audit_log.add_review,
+        audit_reference,
+        review.reviewer,
+        review.action.value,
+        review.justification,
+    )
 
 
 @app.exception_handler(Exception)

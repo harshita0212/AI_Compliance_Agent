@@ -52,3 +52,13 @@ def get_audit(audit_reference: str) -> dict:
     r = requests.get(f"{BASE_URL}/audit/{audit_reference}", timeout=TIMEOUT)
     r.raise_for_status()
     return r.json()
+
+
+def review(audit_reference: str, reviewer: str, action: str, justification: str) -> dict:
+    r = requests.post(
+        f"{BASE_URL}/audit/{audit_reference}/review",
+        json={"reviewer": reviewer, "action": action, "justification": justification},
+        timeout=TIMEOUT,
+    )
+    r.raise_for_status()
+    return r.json()

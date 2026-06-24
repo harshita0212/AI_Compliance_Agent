@@ -42,6 +42,18 @@ class RuleSource(str, Enum):
     BIS = "BIS"
 
 
+class ReviewAction(str, Enum):
+    OVERRIDE_APPROVE = "override_approve"
+    REJECT = "reject"
+    SEND_BACK = "send_back"
+
+
+class ReviewRequest(BaseModel):
+    reviewer: str = Field(..., min_length=1)
+    action: ReviewAction
+    justification: str = Field(default="", description="Required for overrides/rejections.")
+
+
 # ---------- Request ----------
 
 class CampaignRequest(BaseModel):

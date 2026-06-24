@@ -1,16 +1,16 @@
 """
-Audit Log — the immutable legal paper trail.
+Audit Log - the immutable legal paper trail.
 
-Every verdict (including fail-safe FLAGGED ones) is written here as an
-append-only record. This is what makes a decision defensible months later:
-it records what was checked, what fired, the consent rate, the final verdict,
-and which rule corpus version was active.
+Two append-only tables:
+  - audit_log: one row per verdict (never mutated)
+  - reviews:   one row per human review action, referencing a verdict
+
+A reviewer's decision is recorded as a NEW review row, never by editing the
+original verdict. Both the AI's verdict and every human action on it stay
+visible forever - that is what makes the trail defensible.
 
 SQLite now; the function signatures are storage-agnostic so a Postgres
 backend can replace the body without touching the callers.
-
-Guardrail: stores the campaign content and aggregate consent rate, never
-individual customer identities.
 """
 from __future__ import annotations
 
@@ -36,11 +36,18 @@ CREATE TABLE IF NOT EXISTS audit_log (
     rule_corpus_version TEXT,
     content             TEXT,
     violations_json     TEXT,
-    notes               TEXT,
-    reviewer            TEXT,
-    review_action       TEXT,
-    review_justification TEXT,
-    reviewed_at         TEXT
+    notes               TEXT
+);
+"""
+
+_REVIEWS_SCHEMA = """
+CREATE TABLE IF NOT EXISTS reviews (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    audit_reference  TEXT NOT NULL,
+    reviewer         TEXT NOT NULL,
+    action           TEXT NOT NULL,
+    justification    TEXT,
+    reviewed_at      TEXT NOT NULL
 );
 """
 
@@ -54,6 +61,7 @@ def _connect() -> sqlite3.Connection:
 def init_db() -> None:
     with _connect() as conn:
         conn.execute(_SCHEMA)
+        conn.execute(_REVIEWS_SCHEMA)
 
 
 def write(req: CampaignRequest, verdict: ComplianceVerdict) -> None:
@@ -85,12 +93,50 @@ def write(req: CampaignRequest, verdict: ComplianceVerdict) -> None:
         )
 
 
+def add_review(audit_reference: str, reviewer: str, action: str, justification: str) -> dict:
+    """Append a human review action. Never edits the original verdict row."""
+    reviewed_at = datetime.now(timezone.utc).isoformat()
+    with _connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO reviews (audit_reference, reviewer, action, justification, reviewed_at)
+            VALUES (?,?,?,?,?)
+            """,
+            (audit_reference, reviewer, action, justification, reviewed_at),
+        )
+    return {
+        "audit_reference": audit_reference,
+        "reviewer": reviewer,
+        "action": action,
+        "justification": justification,
+        "reviewed_at": reviewed_at,
+    }
+
+
+def _reviews_for(conn: sqlite3.Connection, refs: list[str]) -> dict[str, list[dict]]:
+    if not refs:
+        return {}
+    placeholders = ",".join("?" * len(refs))
+    rows = conn.execute(
+        f"SELECT * FROM reviews WHERE audit_reference IN ({placeholders}) ORDER BY reviewed_at ASC",
+        refs,
+    ).fetchall()
+    grouped: dict[str, list[dict]] = {}
+    for r in rows:
+        grouped.setdefault(r["audit_reference"], []).append(dict(r))
+    return grouped
+
+
 def list_entries(limit: int = 100) -> list[dict]:
     with _connect() as conn:
         rows = conn.execute(
             "SELECT * FROM audit_log ORDER BY timestamp DESC LIMIT ?", (limit,)
         ).fetchall()
-    return [_row_to_dict(r) for r in rows]
+        entries = [_row_to_dict(r) for r in rows]
+        reviews = _reviews_for(conn, [e["audit_reference"] for e in entries])
+    for e in entries:
+        e["reviews"] = reviews.get(e["audit_reference"], [])
+    return entries
 
 
 def get_entry(audit_reference: str) -> dict | None:
@@ -98,7 +144,11 @@ def get_entry(audit_reference: str) -> dict | None:
         row = conn.execute(
             "SELECT * FROM audit_log WHERE audit_reference = ?", (audit_reference,)
         ).fetchone()
-    return _row_to_dict(row) if row else None
+        if row is None:
+            return None
+        entry = _row_to_dict(row)
+        entry["reviews"] = _reviews_for(conn, [audit_reference]).get(audit_reference, [])
+    return entry
 
 
 def _row_to_dict(row: sqlite3.Row) -> dict:
