@@ -49,9 +49,9 @@ class ReviewAction(str, Enum):
 
 
 class ReviewRequest(BaseModel):
-    reviewer: str = Field(..., min_length=1)
     action: ReviewAction
     justification: str = Field(default="", description="Required for overrides/rejections.")
+    reviewer: str = Field(default="", description="Ignored; identity comes from auth.")
 
 
 # ---------- Request ----------

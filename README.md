@@ -268,6 +268,17 @@ Example request to `POST /check`:
 
 ---
 
+## Access control
+
+The backend enforces role-based access. Two roles exist:
+
+| Role                 | Can submit & read | Can review / override |
+| -------------------- | :---------------: | :-------------------: |
+| `marketer`           |        yes        |          no           |
+| `compliance_officer` |        yes        |          yes          |
+
+The frontend has a "Signed in as" switch in the sidebar (a demo stand-in for company single sign-on). Only a compliance officer can act on flagged campaigns, and the reviewer's identity is taken from their login - not a typed-in name - so the audit trail cannot be spoofed. In production the demo users are replaced by an identity provider (SSO/SAML) and a secrets store; only `app/core/auth.py` changes.
+
 ## Current limitations
 
 This is a prototype. The following are known and intentional at this stage:

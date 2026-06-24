@@ -14,6 +14,9 @@ import api_client as api
 
 st.set_page_config(page_title="AI Compliance Agent", page_icon="check", layout="wide")
 
+name, role = api.sign_in_widget()
+st.sidebar.caption(f"Role: {role.replace('_', ' ')}")
+
 st.title("AI Compliance Agent")
 st.caption("Automated marketing-compliance review — DPDP, ASCI, TRAI, BIS")
 

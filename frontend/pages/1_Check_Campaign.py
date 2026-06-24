@@ -11,6 +11,7 @@ import streamlit as st
 import api_client as api
 
 st.set_page_config(page_title="Check Campaign", page_icon="check", layout="wide")
+api.sign_in_widget()
 st.title("Check campaign")
 
 # --- session state ---

@@ -2,9 +2,10 @@
 Approval Inbox - human-in-the-loop review of FLAGGED campaigns.
 
 Shows flagged verdicts that have not yet been reviewed, beside the AI's
-reasoning. A reviewer can Override & approve, Reject, or Send back. Each
-action is recorded as a NEW review record alongside the original verdict
-(never overwriting it). Reviewed items leave the queue.
+reasoning. Only a signed-in compliance officer can act; a marketer sees the
+queue read-only. Each action is recorded as a NEW review record alongside the
+original verdict (never overwriting it), and the reviewer identity comes from
+the signed-in user, not a typed-in name. Reviewed items leave the queue.
 """
 from __future__ import annotations
 
@@ -13,10 +14,18 @@ import streamlit as st
 import api_client as api
 
 st.set_page_config(page_title="Approval Inbox", page_icon="inbox", layout="wide")
+name, role = api.sign_in_widget()
 st.title("Approval inbox")
 st.caption("Flagged campaigns awaiting human review")
 
-reviewer = st.text_input("Reviewer name", value="Compliance Officer")
+is_officer = role == "compliance_officer"
+if is_officer:
+    st.success(f"Signed in as {name}. You can review and act on flagged campaigns.")
+else:
+    st.warning(
+        "You are signed in as a marketer. You can view the queue, but only a "
+        "compliance officer can override, reject, or send back. Switch role in the sidebar."
+    )
 
 try:
     all_entries = api.list_audit(200)
@@ -50,6 +59,10 @@ for e in pending:
             if not e.get("violations") and not e.get("notes"):
                 st.write("No specific violations recorded.")
 
+        if not is_officer:
+            st.caption("Sign in as Compliance Officer (sidebar) to take action.")
+            continue
+
         justification = st.text_area(
             "Justification (required to override or reject)",
             key=f"just_{ref}",
@@ -57,9 +70,9 @@ for e in pending:
         )
         b1, b2, b3, _ = st.columns([1, 1, 1, 3])
 
-        def _do(action: str):
+        def _do(action: str, ref: str = ref, justification_box: str = f"just_{ref}"):
             try:
-                api.review(ref, reviewer or "Reviewer", action, justification)
+                api.review(ref, action, st.session_state.get(justification_box, ""))
                 st.success("Recorded. Refreshing queue…")
                 st.rerun()
             except Exception as ex:  # noqa: BLE001

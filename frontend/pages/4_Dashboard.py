@@ -14,6 +14,7 @@ import streamlit as st
 import api_client as api
 
 st.set_page_config(page_title="Dashboard", page_icon="chart", layout="wide")
+api.sign_in_widget()
 st.title("Compliance dashboard")
 st.caption("Analytics over the audit log (DuckDB)")
 

@@ -15,6 +15,7 @@ import streamlit as st
 import api_client as api
 
 st.set_page_config(page_title="Audit Log", page_icon="list", layout="wide")
+api.sign_in_widget()
 st.title("Audit log")
 st.caption("Every verdict, newest first - append-only")
 
