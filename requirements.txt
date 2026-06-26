@@ -9,3 +9,7 @@ python-dotenv==1.0.1
 # sentence-transformers==3.1.1 # local embeddings for ChromaDB
 google-genai==1.39.0
 psycopg[binary]==3.3.4
+pypdf==5.9.0
+python-multipart==0.0.20
+pillow==12.1.1
+pytesseract==0.3.13

@@ -83,3 +83,10 @@ def run_eval() -> dict:
     r = requests.get(f"{BASE_URL}/eval", headers=_headers(), timeout=120)
     r.raise_for_status()
     return r.json()
+
+
+def extract_file(file_bytes: bytes, filename: str, content_type: str | None = None) -> dict:
+    files = {"file": (filename, file_bytes, content_type or "application/octet-stream")}
+    r = requests.post(f"{BASE_URL}/extract", files=files, headers=_headers(), timeout=120)
+    r.raise_for_status()
+    return r.json()

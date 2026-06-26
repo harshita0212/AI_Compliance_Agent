@@ -13,7 +13,7 @@ from __future__ import annotations
 import asyncio
 import uuid
 
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.responses import JSONResponse
 
 from app.config import get_settings
@@ -21,7 +21,7 @@ from app.core import corpus
 from app.core.auth import get_current_user, require_compliance_officer
 from app.core.orchestrator import run_compliance_check
 from app.models.schemas import CampaignRequest, ComplianceVerdict, ReviewAction, ReviewRequest, Verdict
-from app.services import audit_log, evaluation
+from app.services import audit_log, evaluation, file_extraction
 
 settings = get_settings()
 
@@ -54,6 +54,24 @@ async def check_campaign(req: CampaignRequest, user: dict = Depends(get_current_
 @app.get("/audit")
 async def list_audit(limit: int = 100, user: dict = Depends(get_current_user)) -> list[dict]:
     return await asyncio.to_thread(audit_log.list_entries, limit)
+
+
+@app.post("/extract")
+async def extract_file(
+    file: UploadFile = File(...),
+    user: dict = Depends(get_current_user),
+) -> dict:
+    """
+    Extract text from an uploaded PDF or image so it can be checked.
+    Local-first (pypdf / OCR); falls back to Gemini vision. Does not run the
+    compliance check or write the audit log - the user reviews the text first.
+    """
+    data = await file.read()
+    if not data:
+        raise HTTPException(status_code=422, detail="Empty file.")
+    return await asyncio.to_thread(
+        file_extraction.extract_text, data, file.filename or "", file.content_type
+    )
 
 
 @app.get("/eval")

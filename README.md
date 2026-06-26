@@ -34,6 +34,7 @@ The system acts as an automated legal gatekeeper: it reads the content, validate
 - **Human-in-the-loop review** - an Approval Inbox lets a reviewer override, reject, or send back flagged campaigns, with a justification required for overrides.
 - **Filtering and export** - the audit log is filterable and searchable, with one-click CSV export for a regulator-ready report.
 - **SQL-powered analytics** - the dashboard runs DuckDB queries over the audit log for verdict mix, approval rate, top violations, channel breakdowns, and check volume over time.
+- **PDF & image upload** - upload a campaign as a PDF or image instead of typing. Text is extracted locally first (pypdf for PDFs, Tesseract OCR for images if installed); scanned files fall back to Gemini vision. The method used is shown so it is clear whether the file stayed on the system.
 - **Privacy by design** - personal data (email, phone, Aadhaar, PAN) is redacted from campaign text before it is sent to the external AI, so no PII leaves the system; the redaction is noted on the verdict for auditability.
 - **Decoupled frontend** - the Streamlit UI talks to the engine over HTTP only, so it can be replaced with a production frontend without changing the backend.
 
@@ -80,15 +81,15 @@ If Gemini is unavailable (no key, quota, or blocked network), the pipeline falls
 
 ## Technology stack
 
-| Layer | Technology | Role |
-|-------|-----------|------|
-| Backend API | FastAPI + Uvicorn | Serves the compliance engine; async support, automatic OpenAPI docs |
-| Validation | Pydantic | Strict request/response schemas; rejects malformed input at the gateway |
-| AI reasoning | Google Gemini (`google-genai`, gemini-2.5-flash) | Context-aware violation detection over the corpus |
-| Frontend | Streamlit | Multi-page dashboard for business users |
-| Audit log | SQLite | Append-only verdict + review record (designed to migrate to PostgreSQL) |
-| Analytics | DuckDB | In-process SQL analytics over the audit log |
-| Language | Python 3.11 | - |
+| Layer        | Technology                                       | Role                                                                    |
+| ------------ | ------------------------------------------------ | ----------------------------------------------------------------------- |
+| Backend API  | FastAPI + Uvicorn                                | Serves the compliance engine; async support, automatic OpenAPI docs     |
+| Validation   | Pydantic                                         | Strict request/response schemas; rejects malformed input at the gateway |
+| AI reasoning | Google Gemini (`google-genai`, gemini-2.5-flash) | Context-aware violation detection over the corpus                       |
+| Frontend     | Streamlit                                        | Multi-page dashboard for business users                                 |
+| Audit log    | SQLite                                           | Append-only verdict + review record (designed to migrate to PostgreSQL) |
+| Analytics    | DuckDB                                           | In-process SQL analytics over the audit log                             |
+| Language     | Python 3.11                                      | -                                                                       |
 
 All components are free and open source at prototype scale; Gemini uses the free API tier.
 
@@ -180,14 +181,14 @@ The dashboard opens at `http://localhost:8501`.
 
 Settings are read from `.env` (see `.env.example`):
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `GEMINI_API_KEY` | (empty) | Gemini key; when present, Gemini runs alongside keyword matching |
-| `GEMINI_MODEL` | `gemini-2.5-flash` | Gemini model to use |
-| `RULE_CORPUS_VERSION` | `2026.06.1` | Recorded with every verdict for auditability |
-| `CONFIDENCE_THRESHOLD` | `0.70` | Below this, a verdict is flagged for review |
-| `MIN_CONSENT_RATE` | `1.0` | Minimum audience consent rate before a campaign is rejected |
-| `AUDIT_DB_PATH` | `audit_log.db` | SQLite database path |
+| Variable               | Default            | Description                                                      |
+| ---------------------- | ------------------ | ---------------------------------------------------------------- |
+| `GEMINI_API_KEY`       | (empty)            | Gemini key; when present, Gemini runs alongside keyword matching |
+| `GEMINI_MODEL`         | `gemini-2.5-flash` | Gemini model to use                                              |
+| `RULE_CORPUS_VERSION`  | `2026.06.1`        | Recorded with every verdict for auditability                     |
+| `CONFIDENCE_THRESHOLD` | `0.70`             | Below this, a verdict is flagged for review                      |
+| `MIN_CONSENT_RATE`     | `1.0`              | Minimum audience consent rate before a campaign is rejected      |
+| `AUDIT_DB_PATH`        | `audit_log.db`     | SQLite database path                                             |
 
 ---
 
@@ -207,21 +208,21 @@ Two independent factors drive every decision:
 **1. Content** - each rule that fires carries a severity. Their weights are summed, and the confidence score is `1.0 - (total weighted load)`.
 
 | Severity | Weight |
-|----------|--------|
-| Critical | 1.0 |
-| High | 0.6 |
-| Medium | 0.3 |
-| Low | 0.1 |
+| -------- | ------ |
+| Critical | 1.0    |
+| High     | 0.6    |
+| Medium   | 0.3    |
+| Low      | 0.1    |
 
 **2. Consent** - if the audience's consent rate falls below `MIN_CONSENT_RATE`, that alone is treated as a Critical DPDP (Section 6) violation. The system never assumes consent.
 
 **The decision rule:**
 
-| Condition | Verdict |
-|-----------|---------|
-| Any Critical violation, or consent shortfall | **REJECTED** |
-| Any other violation, or confidence below threshold | **FLAGGED** |
-| No violations and full consent | **APPROVED** |
+| Condition                                          | Verdict      |
+| -------------------------------------------------- | ------------ |
+| Any Critical violation, or consent shortfall       | **REJECTED** |
+| Any other violation, or confidence below threshold | **FLAGGED**  |
+| No violations and full consent                     | **APPROVED** |
 
 A consequence worth noting: identical content can yield different verdicts depending on the audience. Clean copy sent to a low-consent segment is rejected on the consent failure alone, while the same copy sent to a fully-consented segment is approved.
 
@@ -233,15 +234,15 @@ All legal rules live in a single versioned file: `app/data/rules/corpus.json`. E
 
 The corpus currently contains six content rules plus one consent rule generated by the verdict engine:
 
-| Source | Detects | Severity | Citation |
-|--------|---------|----------|----------|
-| ASCI | Unsubstantiated superlatives ("best", "no.1", "world's") | Critical | ASCI Code Chapter I, Clause 1.4 |
-| ASCI | Absolute guarantees ("100%", "guaranteed", "risk-free") | High | ASCI Code Chapter I, Clause 1.1 |
-| TRAI | False urgency ("now", "hurry", "last chance") | High | CCPA Misleading Ads Guidelines 2022 / TCCCPR 2018 |
-| BIS | Energy/certification claims without a valid reference | Medium | BIS / BEE energy-rating rules |
-| DPDP | Data-sharing language without a consent notice | High | DPDP Act 2023, Section 5 (Notice) |
-| DPDP | Implied or pre-ticked consent | Critical | DPDP Act 2023, Section 6 (Consent) |
-| DPDP *(engine)* | Audience consent rate below threshold | Critical | DPDP Act 2023, Section 6 (Consent) |
+| Source          | Detects                                                  | Severity | Citation                                          |
+| --------------- | -------------------------------------------------------- | -------- | ------------------------------------------------- |
+| ASCI            | Unsubstantiated superlatives ("best", "no.1", "world's") | Critical | ASCI Code Chapter I, Clause 1.4                   |
+| ASCI            | Absolute guarantees ("100%", "guaranteed", "risk-free")  | High     | ASCI Code Chapter I, Clause 1.1                   |
+| TRAI            | False urgency ("now", "hurry", "last chance")            | High     | CCPA Misleading Ads Guidelines 2022 / TCCCPR 2018 |
+| BIS             | Energy/certification claims without a valid reference    | Medium   | BIS / BEE energy-rating rules                     |
+| DPDP            | Data-sharing language without a consent notice           | High     | DPDP Act 2023, Section 5 (Notice)                 |
+| DPDP            | Implied or pre-ticked consent                            | Critical | DPDP Act 2023, Section 6 (Consent)                |
+| DPDP _(engine)_ | Audience consent rate below threshold                    | Critical | DPDP Act 2023, Section 6 (Consent)                |
 
 Keeping each rule as a versioned, self-contained entry means a rule can be updated, replaced, or extended without touching the engine code, and the system always records which version of the law was active when a decision was made.
 
@@ -249,13 +250,13 @@ Keeping each rule as a versioned, self-contained entry means a rule can be updat
 
 ## API reference
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/health` | Service status, active rule-corpus version, and Gemini status |
-| `POST` | `/check` | Submit a campaign; returns a compliance verdict |
-| `GET` | `/audit` | List all logged verdicts, newest first |
-| `GET` | `/audit/{audit_reference}` | Retrieve a single verdict (with its review history) |
-| `POST` | `/audit/{audit_reference}/review` | Record a human review action (override / reject / send back) |
+| Method | Endpoint                          | Description                                                   |
+| ------ | --------------------------------- | ------------------------------------------------------------- |
+| `GET`  | `/health`                         | Service status, active rule-corpus version, and Gemini status |
+| `POST` | `/check`                          | Submit a campaign; returns a compliance verdict               |
+| `GET`  | `/audit`                          | List all logged verdicts, newest first                        |
+| `GET`  | `/audit/{audit_reference}`        | Retrieve a single verdict (with its review history)           |
+| `POST` | `/audit/{audit_reference}/review` | Record a human review action (override / reject / send back)  |
 
 Example request to `POST /check`:
 
@@ -273,10 +274,10 @@ Example request to `POST /check`:
 
 The backend enforces role-based access. Two roles exist:
 
-| Role | Can submit & read | Can review / override |
-|------|:---:|:---:|
-| `marketer` | yes | no |
-| `compliance_officer` | yes | yes |
+| Role                 | Can submit & read | Can review / override |
+| -------------------- | :---------------: | :-------------------: |
+| `marketer`           |        yes        |          no           |
+| `compliance_officer` |        yes        |          yes          |
 
 The frontend has a "Signed in as" switch in the sidebar (a demo stand-in for company single sign-on). Only a compliance officer can act on flagged campaigns, and the reviewer's identity is taken from their login - not a typed-in name - so the audit trail cannot be spoofed. In production the demo users are replaced by an identity provider (SSO/SAML) and a secrets store; only `app/core/auth.py` changes.
 

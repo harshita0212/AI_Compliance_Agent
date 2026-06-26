@@ -29,6 +29,29 @@ _BANNER = {
 }
 _SEV_LABEL = {"Critical": "🔴 Critical", "High": "🟠 High", "Medium": "🟡 Medium", "Low": "⚪ Low"}
 
+# --- file upload (extract text from a PDF or image into the draft) ---
+with st.expander("Upload a PDF or image instead of typing"):
+    up = st.file_uploader("Campaign file", type=["pdf", "png", "jpg", "jpeg", "webp"], key="upload")
+    if up is not None and st.button("Extract text from file"):
+        with st.spinner("Reading the file…"):
+            try:
+                res = api.extract_file(up.getvalue(), up.name, up.type)
+            except Exception as e:  # noqa: BLE001
+                st.error(f"Could not read the file: {e}")
+                res = None
+        if res:
+            if res["text"]:
+                st.session_state.draft = res["text"]
+                st.session_state.verdict = None
+                # Tell the user how it was read (and whether it left the system).
+                if res["method"] == "gemini-vision":
+                    st.warning(res["note"])
+                else:
+                    st.success(res["note"])
+                st.rerun()
+            else:
+                st.warning(res["note"])
+
 # --- input form ---
 col1, col2 = st.columns([3, 1])
 with col1:
