@@ -34,14 +34,28 @@ settings = get_settings()
 
 
 def _merge_hits(keyword: list[RuleHit], gemini: list[RuleHit]) -> list[RuleHit]:
-    """Union of both detectors, de-duplicated by (rule_id, triggering_text)."""
-    seen: set[tuple[str, str]] = set()
-    merged: list[RuleHit] = []
+    """
+    Combine both detectors into one hit per rule.
+
+    A rule should count once even if several phrases triggered it (e.g. "100%"
+    and "risk-free" both firing the same ASCI clause). Collapsing by rule_id
+    keeps the violation list clean AND stops the verdict engine from counting
+    one rule's severity twice. The triggering phrases are preserved, joined
+    together, so no detail is lost.
+    """
+    by_rule: dict[str, RuleHit] = {}
+    phrases: dict[str, list[str]] = {}
     for hit in keyword + gemini:
-        key = (hit.rule_id, hit.triggering_text.lower())
-        if key not in seen:
-            seen.add(key)
-            merged.append(hit)
+        if hit.rule_id not in by_rule:
+            by_rule[hit.rule_id] = hit
+            phrases[hit.rule_id] = []
+        text = hit.triggering_text.strip()
+        if text and text.lower() not in [p.lower() for p in phrases[hit.rule_id]]:
+            phrases[hit.rule_id].append(text)
+
+    merged: list[RuleHit] = []
+    for rule_id, hit in by_rule.items():
+        merged.append(hit.model_copy(update={"triggering_text": ", ".join(phrases[rule_id])}))
     return merged
 
 
@@ -89,12 +103,16 @@ async def run_compliance_check(req: CampaignRequest) -> ComplianceVerdict:
     #     If Gemini is unavailable, fall back to keyword-only and record it
     #     (keyword detection is still valid, so we don't blanket-flag).
     degraded_note = None
+    gemini_hits: list[RuleHit] = []
     if settings.gemini_enabled:
         try:
             gemini_hits = await gemini_matching.detect(req.content)
-            hits = _merge_hits(hits, gemini_hits)
         except LLMUnavailableError as e:
             degraded_note = f"AI reasoning unavailable this run; keyword checks only ({e})."
+
+    # Always collapse to one hit per rule (combines keyword + Gemini, and
+    # also de-duplicates multiple keyword phrases that hit the same rule).
+    hits = _merge_hits(hits, gemini_hits)
 
     # 4. Citation generator — attach the law + fix to each hit.
     violations = citation_generator.generate(hits)
