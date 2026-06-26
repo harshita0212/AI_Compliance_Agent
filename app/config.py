@@ -38,7 +38,9 @@ class Settings:
     USE_MOCK_LLM: bool = os.getenv("USE_MOCK_LLM", "true").lower() == "true"
 
     # --- Audit log ---
-    # SQLite for the prototype; swap to a Postgres DSN later with one change.
+    # If DATABASE_URL is set (a Postgres DSN), the audit log uses Postgres.
+    # Otherwise it falls back to a local SQLite file.
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "")
     AUDIT_DB_PATH: str = os.getenv("AUDIT_DB_PATH", "audit_log.db")
 
 
