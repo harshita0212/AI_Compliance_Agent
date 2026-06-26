@@ -26,6 +26,7 @@ from app.services import (
     consent_validation,
     content_analysis,
     gemini_matching,
+    pii_redaction,
     rule_matching,
     verdict_engine,
 )
@@ -103,10 +104,17 @@ async def run_compliance_check(req: CampaignRequest) -> ComplianceVerdict:
     #     If Gemini is unavailable, fall back to keyword-only and record it
     #     (keyword detection is still valid, so we don't blanket-flag).
     degraded_note = None
+    pii_note = None
     gemini_hits: list[RuleHit] = []
     if settings.gemini_enabled:
+        # Strip personal data BEFORE it leaves our system for the third-party
+        # model. Keyword matching above already ran on the full original text,
+        # so redaction costs us no detection accuracy.
+        redacted_content, pii_found = pii_redaction.redact(req.content)
+        if pii_found:
+            pii_note = f"Personal data redacted before AI analysis: {', '.join(pii_found)}."
         try:
-            gemini_hits = await gemini_matching.detect(req.content)
+            gemini_hits = await gemini_matching.detect(redacted_content)
         except LLMUnavailableError as e:
             degraded_note = f"AI reasoning unavailable this run; keyword checks only ({e})."
 
@@ -118,7 +126,10 @@ async def run_compliance_check(req: CampaignRequest) -> ComplianceVerdict:
     violations = citation_generator.generate(hits)
 
     # 5. Verdict.
-    note = degraded_note or ("No claims extracted from content." if analysis.is_empty else None)
+    note_parts = [n for n in (degraded_note, pii_note) if n]
+    if analysis.is_empty and not note_parts:
+        note_parts.append("No claims extracted from content.")
+    note = " ".join(note_parts) or None
     return verdict_engine.decide(
         violations=violations,
         consent=consent,
