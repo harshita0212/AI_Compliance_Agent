@@ -77,3 +77,9 @@ def review(audit_reference: str, action: str, justification: str) -> dict:
     )
     r.raise_for_status()
     return r.json()
+
+
+def run_eval() -> dict:
+    r = requests.get(f"{BASE_URL}/eval", headers=_headers(), timeout=120)
+    r.raise_for_status()
+    return r.json()

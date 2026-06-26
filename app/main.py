@@ -21,7 +21,7 @@ from app.core import corpus
 from app.core.auth import get_current_user, require_compliance_officer
 from app.core.orchestrator import run_compliance_check
 from app.models.schemas import CampaignRequest, ComplianceVerdict, ReviewAction, ReviewRequest, Verdict
-from app.services import audit_log
+from app.services import audit_log, evaluation
 
 settings = get_settings()
 
@@ -54,6 +54,12 @@ async def check_campaign(req: CampaignRequest, user: dict = Depends(get_current_
 @app.get("/audit")
 async def list_audit(limit: int = 100, user: dict = Depends(get_current_user)) -> list[dict]:
     return await asyncio.to_thread(audit_log.list_entries, limit)
+
+
+@app.get("/eval")
+async def run_evaluation(user: dict = Depends(get_current_user)) -> dict:
+    """Run the labelled test set through the pipeline and return accuracy metrics."""
+    return await evaluation.evaluate()
 
 
 @app.get("/audit/{audit_reference}")

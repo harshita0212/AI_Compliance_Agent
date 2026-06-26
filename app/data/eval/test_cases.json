@@ -1,0 +1,101 @@
+{
+  "description": "Labelled compliance test set. Each case has the correct ground-truth verdict a compliance reviewer would assign. Used to measure system accuracy, false negatives (unsafe misses), and false positives (over-blocking).",
+  "cases": [
+    {
+      "id": "REJ-superlative",
+      "content": "Havells - India's best fans, the no.1 choice for every home.",
+      "channel": "email",
+      "audience_segment": "premium_segment",
+      "expected": "REJECTED",
+      "category": "ASCI superlative (Critical)"
+    },
+    {
+      "id": "REJ-combo",
+      "content": "Guaranteed 100% the best cooling, completely risk-free.",
+      "channel": "email",
+      "audience_segment": "premium_segment",
+      "expected": "REJECTED",
+      "category": "ASCI guarantee + superlative (Critical)"
+    },
+    {
+      "id": "REJ-consent",
+      "content": "Order our new ceiling fans for your home this season.",
+      "channel": "email",
+      "audience_segment": "low_consent_segment",
+      "expected": "REJECTED",
+      "category": "Consent shortfall (DPDP S6, Critical)"
+    },
+    {
+      "id": "REJ-preticked",
+      "content": "You are automatically subscribed to offers when you buy from us.",
+      "channel": "email",
+      "audience_segment": "premium_segment",
+      "expected": "REJECTED",
+      "category": "Implied/pre-ticked consent (DPDP S6, Critical)"
+    },
+    {
+      "id": "FLAG-urgency",
+      "content": "Hurry, last chance to grab our fans before stock runs out.",
+      "channel": "SMS",
+      "audience_segment": "premium_segment",
+      "expected": "FLAGGED",
+      "category": "False urgency (TRAI, High)"
+    },
+    {
+      "id": "FLAG-energy",
+      "content": "Our ceiling fans are 5-star energy efficient.",
+      "channel": "email",
+      "audience_segment": "premium_segment",
+      "expected": "FLAGGED",
+      "category": "Energy claim without reference (BIS, Medium)"
+    },
+    {
+      "id": "FLAG-datashare",
+      "content": "We share your contact details with our partners for better offers.",
+      "channel": "email",
+      "audience_segment": "premium_segment",
+      "expected": "FLAGGED",
+      "category": "Data-sharing without notice (DPDP S5, High)"
+    },
+    {
+      "id": "FLAG-buynow",
+      "content": "Buy now and stay cool all summer with our fans.",
+      "channel": "SMS",
+      "audience_segment": "premium_segment",
+      "expected": "FLAGGED",
+      "category": "Urgency phrase (TRAI, High)"
+    },
+    {
+      "id": "OK-store",
+      "content": "Discover our new range of quiet ceiling fans. Visit your nearest Havells store.",
+      "channel": "email",
+      "audience_segment": "premium_segment",
+      "expected": "APPROVED",
+      "category": "Clean copy, full consent"
+    },
+    {
+      "id": "OK-warranty",
+      "content": "Our fans come with a standard two year warranty. Terms and conditions apply.",
+      "channel": "email",
+      "audience_segment": "premium_segment",
+      "expected": "APPROVED",
+      "category": "Clean copy, full consent"
+    },
+    {
+      "id": "OK-newsletter",
+      "content": "Sign up for our newsletter for seasonal fan care tips.",
+      "channel": "email",
+      "audience_segment": "newsletter_optin",
+      "expected": "APPROVED",
+      "category": "Clean copy, opted-in audience"
+    },
+    {
+      "id": "OK-collection",
+      "content": "Keep your home cool and comfortable with our latest ceiling fan collection.",
+      "channel": "email",
+      "audience_segment": "premium_segment",
+      "expected": "APPROVED",
+      "category": "Clean copy, full consent"
+    }
+  ]
+}
