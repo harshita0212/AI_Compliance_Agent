@@ -1,0 +1,14 @@
+{
+    "marketer": {
+        "email": "marketer@compliance.ai",
+        "password_hash": "e9e94029607309aa8fe11ac1e0a6f32c07d2417629812816f13eccbfad459d90",
+        "salt": "1234567890abcdef",
+        "role": "marketer"
+    },
+    "officer": {
+        "email": "officer@compliance.ai",
+        "password_hash": "213c6b59bcca117897cea9766b87cd1f32f75b1610fca956c46273cfcf95fe00",
+        "salt": "abcdef1234567890",
+        "role": "compliance_officer"
+    }
+}
