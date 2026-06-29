@@ -19,26 +19,38 @@ CHANNELS = ["email", "SMS", "WhatsApp"]
 
 # DEMO users (stand-in for SSO). name -> (api_key, role)
 DEMO_USERS = {
-    "Marketer": ("marketer-key", "marketer"),
-    "Compliance Officer": ("officer-key", "compliance_officer"),
+    "marketer": ("marketer-key", "marketer"),
+    "compliance_officer": ("officer-key", "compliance_officer"),
 }
-
-API_KEY: str | None = None
 
 
 def sign_in_widget() -> tuple[str, str]:
-    """Sidebar role switch. Sets the active API key. Returns (name, role)."""
-    global API_KEY
-    name = st.sidebar.radio("Signed in as", list(DEMO_USERS), key="_signed_in_as")
-    key, role = DEMO_USERS[name]
-    API_KEY = key
-    st.session_state["user_name"] = name
-    st.session_state["user_role"] = role
+    """
+    Renders user status and log out button in the sidebar.
+    Returns (username, role) based on the session state.
+    """
+    name = st.session_state.get("user_name", "Guest")
+    role = st.session_state.get("user_role", "marketer")
+    
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### 👤 Session Profile")
+    st.sidebar.markdown(f"**User:** `{name}`")
+    st.sidebar.markdown(f"**Role:** `{role.replace('_', ' ').title()}`")
+    
+    st.sidebar.markdown("<br>", unsafe_allow_html=True)
+    if st.sidebar.button("🚪 Log Out", key="sidebar_logout_btn", use_container_width=True):
+        st.session_state.clear()
+        st.session_state["authenticated"] = False
+        st.rerun()
+        
     return name, role
 
 
 def _headers() -> dict:
-    return {"X-API-Key": API_KEY} if API_KEY else {}
+    role = st.session_state.get("user_role", "marketer")
+    key = "officer-key" if role == "compliance_officer" else "marketer-key"
+    return {"X-API-Key": key}
+
 
 
 def health() -> dict:
