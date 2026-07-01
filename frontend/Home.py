@@ -127,7 +127,7 @@ with col_options:
     # Select Channel (strictly constrained)
     selected_channel = st.selectbox(
         "Select Channel Target",
-        options=["Email", "SMS", "WhatsApp"],
+        options=["Email", "SMS", "WhatsApp","Social Media"],
         index=0,
         help="Target channel specifies which compliance rules will be triggered."
     )
@@ -135,8 +135,9 @@ with col_options:
     # Map back to lowercase/casing required by the backend
     channel_api_map = {
         "Email": "email",
-        "SMS": "SMS",
-        "WhatsApp": "WhatsApp"
+        "SMS": "sms",
+        "WhatsApp": "whatsapp",
+        "Social Media": "social_media"
     }
     api_channel = channel_api_map[selected_channel]
 
