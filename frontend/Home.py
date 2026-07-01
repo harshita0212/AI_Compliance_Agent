@@ -90,6 +90,8 @@ col_main, col_options = st.columns([2, 1], gap="large")
 with col_main:
     with st.container(border=True):
         # Campaign Text Area Input
+        if "pending_draft" in st.session_state:
+            st.session_state["draft"] = st.session_state.pop("pending_draft")
         content = st.text_area(
             "📝 Campaign Copywriting Draft",
             key="draft",
@@ -110,7 +112,7 @@ with col_main:
                         try:
                             res = api.extract_file(uploaded_file.getvalue(), uploaded_file.name, uploaded_file.type)
                             if res and res.get("text"):
-                                st.session_state.draft = res["text"]
+                                st.session_state["pending_draft"] = res["text"]
                                 st.session_state.verdict = None
                                 st.success(res.get("note", "Text successfully extracted!"))
                                 st.rerun()

@@ -64,16 +64,27 @@ def decide(
 
     has_critical = any(v.severity == Severity.CRITICAL for v in violations)
 
-    # Confidence: 1.0 minus the weighted load of violations, floored at 0.
-    load = sum(_SEVERITY_WEIGHT[v.severity] for v in violations)
-    confidence = max(0.0, round(1.0 - min(load, 1.0), 2))
+    # Internal load metric — kept only to drive the FLAGGED threshold.
+    violation_load = min(sum(_SEVERITY_WEIGHT[v.severity] for v in violations), 1.0)
 
     if has_critical or consent_failed:
         verdict = Verdict.REJECTED
-    elif violations or confidence < settings.CONFIDENCE_THRESHOLD:
+    elif violations or (1.0 - violation_load) < settings.CONFIDENCE_THRESHOLD:
         verdict = Verdict.FLAGGED
     else:
         verdict = Verdict.APPROVED
+
+    # Reported confidence = how sure the agent is in THIS verdict (always set).
+    llm_degraded = bool(notes) and "unavailable" in notes.lower()
+    if consent_failed or has_critical:
+        confidence = 0.97          # deterministic consent math / hard rule
+    elif violations:
+        confidence = 0.90          # rules fired; verdict well-supported
+    else:
+        confidence = 0.95          # clean, full pipeline ran
+    if llm_degraded:
+        confidence = min(confidence, 0.60)   # AI layer fell back -> less sure
+    confidence = round(confidence, 2)
 
     return ComplianceVerdict(
         verdict=verdict,
