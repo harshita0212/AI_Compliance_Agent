@@ -111,3 +111,9 @@ class ComplianceVerdict(BaseModel):
     rule_corpus_version: str
     timestamp: datetime = Field(default_factory=datetime.utcnow)
     notes: Optional[str] = None     # used for fail-safe / degraded-mode messages
+
+
+class RemediationResponse(BaseModel):
+    suggested_rewrite: str
+    explanation: str
+

@@ -1,5 +1,5 @@
 {
-  "version": "2026.06.6",
+  "version": "2026.06.7",
   "sources": {
     "ASCI": [
       {
@@ -427,7 +427,7 @@
       {
         "id": "DPDP-S5-NOTICE",
         "pattern": "\\b(sign\\s?up|subscribe|register|enter your|provide your|share your)\\b.{0,40}\\b(email|phone|number|contact|details|data|address|name)\\b",
-        "severity": "High",
+        "severity": "Medium",
         "citation": "DPDP Act 2023, s. 5(1) (Notice)",
         "explanation": "Personal data is being collected without an accompanying notice of what data is collected and the purpose. s.5(1) requires a notice of the data, the purpose, how to exercise rights, and how to complain to the Board.",
         "suggested_fix": "Add a clear notice stating what personal data is collected, the specific purpose, and a link to the privacy notice before collecting it.",

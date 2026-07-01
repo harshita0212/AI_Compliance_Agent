@@ -102,3 +102,14 @@ def extract_file(file_bytes: bytes, filename: str, content_type: str | None = No
     r = requests.post(f"{BASE_URL}/extract", files=files, headers=_headers(), timeout=120)
     r.raise_for_status()
     return r.json()
+
+
+def remediate_campaign(content: str, channel: str, audience_segment: str) -> dict:
+    r = requests.post(
+        f"{BASE_URL}/remediate",
+        json={"content": content, "channel": channel, "audience_segment": audience_segment},
+        headers=_headers(), timeout=TIMEOUT,
+    )
+    r.raise_for_status()
+    return r.json()
+

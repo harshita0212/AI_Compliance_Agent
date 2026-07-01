@@ -20,8 +20,8 @@ from app.config import get_settings
 from app.core import corpus
 from app.core.auth import get_current_user, require_compliance_officer
 from app.core.orchestrator import run_compliance_check
-from app.models.schemas import CampaignRequest, ComplianceVerdict, ReviewAction, ReviewRequest, Verdict
-from app.services import audit_log, evaluation, file_extraction
+from app.models.schemas import CampaignRequest, ComplianceVerdict, ReviewAction, ReviewRequest, Verdict, RemediationResponse
+from app.services import audit_log, evaluation, file_extraction, gemini_matching
 
 settings = get_settings()
 
@@ -49,6 +49,48 @@ async def check_campaign(req: CampaignRequest, user: dict = Depends(get_current_
     verdict = await run_compliance_check(req)
     await asyncio.to_thread(audit_log.write, req, verdict)
     return verdict
+
+
+@app.post("/remediate", response_model=RemediationResponse)
+async def remediate_campaign(req: CampaignRequest, user: dict = Depends(get_current_user)) -> RemediationResponse:
+    if not settings.gemini_enabled:
+        raise HTTPException(
+            status_code=400,
+            detail="AI Auto-Remediation requires a Gemini API key. Please configure GEMINI_API_KEY in the environment.",
+        )
+    
+    # 1. Run compliance check to identify violations
+    verdict = await run_compliance_check(req)
+    
+    # 2. Filter out consent violations as they cannot be fixed via copy rewrite
+    copy_violations = [v for v in verdict.violations if "consent" not in v.citation.lower()]
+    
+    if not copy_violations:
+        # Check if there was a consent issue
+        consent_failed = any("consent" in v.citation.lower() for v in verdict.violations)
+        if consent_failed:
+            explanation = "The copywriting itself is compliant, but the targeted audience segment consent rate is too low. Copywriting changes cannot fix consent shortfalls."
+        else:
+            explanation = "No compliance violations found in the copywriting. The campaign copy is already compliant."
+            
+        return RemediationResponse(
+            suggested_rewrite=req.content,
+            explanation=explanation,
+        )
+        
+    # 3. Call Gemini to rewrite the content
+    try:
+        rewrite_text = await gemini_matching.rewrite(req.content, verdict.violations)
+        return RemediationResponse(
+            suggested_rewrite=rewrite_text,
+            explanation="Successfully generated a compliant copywriting rewrite to address detected violations.",
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate remediation suggestion: {e}",
+        )
+
 
 
 @app.get("/audit")

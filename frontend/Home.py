@@ -18,6 +18,20 @@ import api_client as api
 from components.gauges import render_confidence_gauge
 from components.diff_view import render_diff_view
 
+# Initialize State Keys at the top of the file
+if "campaign_draft" not in st.session_state:
+    # Set the baseline default value to match the example text from our documentation
+    st.session_state.campaign_draft = "Havells fans - the BEST in India! 100% safe. Buy NOW before stock runs out! By continuing you are automatically subscribed to third-party newsletter partners."
+if "backend_response" not in st.session_state:
+    st.session_state.backend_response = None
+
+if "gemini_enabled" not in st.session_state:
+    try:
+        st.session_state["gemini_enabled"] = api.health().get("gemini_enabled", False)
+    except Exception:
+        st.session_state["gemini_enabled"] = False
+
+
 if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
 
@@ -75,14 +89,7 @@ name, role = api.sign_in_widget()
 st.markdown('<div class="header-title">Marketer\'s Submission Terminal</div>', unsafe_allow_html=True)
 st.markdown('<div class="header-subtitle">Analyze copy and content against regulatory corpus (DPDP Act 2023, ASCI, TRAI, BIS)</div>', unsafe_allow_html=True)
 
-# Main container session state init
-if "draft" not in st.session_state:
-    st.session_state.draft = (
-        "Havells fans - the BEST in India! 100% safe. Buy NOW before stock runs out! "
-        "By continuing you are automatically subscribed to third-party newsletter partners."
-    )
-if "verdict" not in st.session_state:
-    st.session_state.verdict = None
+# Main container session state init (previously draft and verdict, now campaign_draft and backend_response initialized at the top)
 
 # Input Columns
 col_main, col_options = st.columns([2, 1], gap="large")
@@ -91,10 +98,10 @@ with col_main:
     with st.container(border=True):
         # Campaign Text Area Input
         if "pending_draft" in st.session_state:
-            st.session_state["draft"] = st.session_state.pop("pending_draft")
+            st.session_state["campaign_draft"] = st.session_state.pop("pending_draft")
         content = st.text_area(
             "📝 Campaign Copywriting Draft",
-            key="draft",
+            key="campaign_draft",
             height=180,
             placeholder="Paste your promotional copy or campaign draft here...",
         )
@@ -113,7 +120,7 @@ with col_main:
                             res = api.extract_file(uploaded_file.getvalue(), uploaded_file.name, uploaded_file.type)
                             if res and res.get("text"):
                                 st.session_state["pending_draft"] = res["text"]
-                                st.session_state.verdict = None
+                                st.session_state.backend_response = None
                                 st.success(res.get("note", "Text successfully extracted!"))
                                 st.rerun()
                             else:
@@ -162,14 +169,14 @@ if analyze_button:
             try:
                 # HTTP POST call using api_client wrapper
                 verdict_res = api.check_campaign(content, api_channel, selected_segment)
-                st.session_state.verdict = verdict_res
+                st.session_state.backend_response = verdict_res
             except Exception as e:
                 # Fail-safe mode: Catch connection issues/exceptions, auto-flag, and alert user
                 st.error(f"Backend API error encountered: {e}")
                 st.warning("Degraded mode: Defaulting verdict to FLAGGED for human verification.")
                 
                 # Mock a FLAGGED verdict to maintain compliance safety
-                st.session_state.verdict = {
+                st.session_state.backend_response = {
                     "verdict": "FLAGGED",
                     "confidence": 0.0,
                     "violations": [],
@@ -180,7 +187,7 @@ if analyze_button:
                 }
 
 # Render verdict results
-v = st.session_state.verdict
+v = st.session_state.backend_response
 if v:
     st.divider()
     
@@ -270,6 +277,63 @@ Critical compliance violations detected. The draft must be modified to satisfy l
                 st.markdown(f"**Explanation:** {vio['explanation']}")
                 st.markdown(f"**Remediation Fix:** {vio['suggested_fix']}")
                 
+        # High-visibility container for auto-remediation if verdict is REJECTED
+        verdict_state = v.get("verdict")
+        if verdict_state == "REJECTED":
+            if st.session_state.get("gemini_enabled", False):
+                st.markdown(
+                    """
+                    <div style="
+                        background: rgba(239, 68, 68, 0.05); 
+                        border: 1px dashed rgba(239, 68, 68, 0.3); 
+                        border-radius: 8px; 
+                        padding: 16px; 
+                        margin-top: 15px; 
+                        margin-bottom: 15px;
+                    ">
+                        <div style="font-family: 'Outfit', sans-serif; font-size: 1.1rem; font-weight: 600; color: #FCA5A5; margin-bottom: 6px;">
+                            ✨ Auto-Remediation Suggestions Available
+                        </div>
+                        <div style="font-size: 0.9rem; color: #E2E8F0; margin-bottom: 12px;">
+                            Click below to apply AI-suggested compliant revisions directly to your copy.
+                        </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+                if st.button("✨ Apply Remediation Fixes", type="primary", use_container_width=True, key="apply_remediation_fixes"):
+                    with st.spinner("Generating AI compliance rewrite..."):
+                        try:
+                            res = api.remediate_campaign(content, api_channel, selected_segment)
+                            st.session_state["pending_draft"] = res["suggested_rewrite"]
+                            st.session_state.backend_response = None
+                            st.success("Remediation fixes applied successfully! Re-running compliance analysis...")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Failed to generate remediation: {e}")
+            else:
+                st.markdown(
+                    """
+                    <div style="
+                        background: rgba(245, 158, 11, 0.05); 
+                        border: 1px dashed rgba(245, 158, 11, 0.3); 
+                        border-radius: 8px; 
+                        padding: 16px; 
+                        margin-top: 15px; 
+                        margin-bottom: 15px;
+                    ">
+                        <div style="font-family: 'Outfit', sans-serif; font-size: 1.1rem; font-weight: 600; color: #FCD34D; margin-bottom: 6px;">
+                            ⚠️ AI Auto-Remediation Offline
+                        </div>
+                        <div style="font-size: 0.9rem; color: #E2E8F0;">
+                            Configure a valid <code>GEMINI_API_KEY</code> in your <code>.env</code> file to enable AI-powered compliance rewriting. Please edit the copy manually using the guidelines below.
+                        </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+                
         st.divider()
         # Interactive side-by-side diff view with apply suggestion patcher
-        render_diff_view(violations, content)
+        render_diff_view(violations, content, api_channel, selected_segment)
+
